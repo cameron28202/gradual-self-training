@@ -3,13 +3,16 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.calibration import CalibratedClassifierCV
 
 class SyntheticClassifier:
     def __init__(self):
-        self.model = DecisionTreeClassifier(random_state=42)
+        base_cart = DecisionTreeClassifier(max_depth=5)
+        self.model = CalibratedClassifierCV(base_cart, method='sigmoid', cv=5)
+        #self.model = DecisionTreeClassifier()
         self.scaler = StandardScaler()
 
-    def generate_synthetic_data(self, n_samples=1000):
+    def generate_synthetic_data(self, n_samples=5000):
 
         # binary classification
         n_features = 2
@@ -58,9 +61,9 @@ class SyntheticClassifier:
         # labeled samples changes at each iter
         labeled_counts = [len(X_labeled)]
 
-        for _ in range(n_iterations):
+        for iteration in range(n_iterations):
             if len(X_remaining) == 0:
-                print("Done w/ self-training")
+                print(f"Done w/ self-training after iteration {iteration}")
                 break
             # train model on current labeled data
             self.model.fit(X_train, y_train)
@@ -70,6 +73,10 @@ class SyntheticClassifier:
             
             max_probas = np.max(probas, axis=1)
             confident_idx = max_probas > threshhold
+
+            if not np.any(confident_idx):
+                print(f"No confident predictions in iteration {iteration + 1}. Stopping.")
+                break
             
             # add samples to this new set of instances
             # that are above the confidence threshhold.
