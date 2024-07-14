@@ -155,8 +155,8 @@ def main():
 
     X_train, y_train, years_train = classifier.self_train(source_data, unlabeled_data)
 
-    pred = classifier.model.predict(X)
-    accuracy = accuracy_score(y, pred)
+    pred = classifier.model.predict(test_data[0])
+    accuracy = accuracy_score(test_data[1], pred)
     print(f"Model's accuracy: {accuracy * 100}%.")
 
 if __name__ == "__main__":

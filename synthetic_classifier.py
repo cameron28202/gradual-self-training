@@ -103,11 +103,9 @@ def main():
     X_train, Y_train, labeled_counts = classifier.self_train(X_source, y_source, X_unlabeled)
 
     pred = classifier.model.predict(X_test)
-    accuracy = 0
-    for x in range(len(X_test)):
-        accuracy += 1 if pred[x] == y_test[x] else 0
+    accuracy = accuracy_score(y_test, pred)
 
-    print(f"Model's accuracy: {accuracy/len(X_test)}")
+    print(f"Model's accuracy: {accuracy * 100}%")
 
 
 if __name__ == "__main__":
