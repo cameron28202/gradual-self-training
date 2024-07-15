@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
@@ -12,7 +13,7 @@ class SyntheticClassifier:
         self.model = CalibratedClassifierCV(base_cart, method='sigmoid', cv=5)
         self.scaler = StandardScaler()
 
-    def generate_synthetic_data(self, n_samples=100000):
+    def generate_synthetic_data(self, n_samples=1000):
 
         # binary classification
         n_features = 2
@@ -98,27 +99,61 @@ class SyntheticClassifier:
             labeled_counts.append(len(X_train))
             threshold = min(threshold + 0.02, 0.95)
 
+def plot_accuracies(accuracies):
+    baseline_accuracies, self_trained_accuracies = zip(*accuracies)
+    
+    avg_baseline = np.mean(baseline_accuracies)
+    avg_self_trained = np.mean(self_trained_accuracies)
+
+    plt.figure(figsize=(10, 6))
+    models = ['Baseline', 'Self-Trained']
+    avg_accuracies = [avg_baseline, avg_self_trained]
+    
+    plt.bar(models, avg_accuracies, color=['blue', 'green'])
+    plt.title('Average Model Accuracy Comparison')
+    plt.ylabel('Accuracy')
+    plt.ylim(0, 1)
+    
+    for i, v in enumerate(avg_accuracies):
+        plt.text(i, v + 0.01, f'{v:.4f}', ha='center')
+    
+    plt.errorbar(models, avg_accuracies, 
+                 yerr=[np.std(baseline_accuracies), np.std(self_trained_accuracies)],
+                 fmt='none', capsize=5, color='black')
+    
+    plt.show()
+
+    print(f"Baseline - Mean: {avg_baseline:.4f}, Std: {np.std(baseline_accuracies):.4f}")
+    print(f"Self-Trained - Mean: {avg_self_trained:.4f}, Std: {np.std(self_trained_accuracies):.4f}")
 
     
 def main():
     classifier = SyntheticClassifier()
 
-    X_source, y_source, X_unlabeled, _, X_test, y_test = classifier.load_and_prepare_data()
+    accuracies = []
+    for _ in range(10):
+        # load new data
+        X_source, y_source, X_unlabeled, _, X_test, y_test = classifier.load_and_prepare_data()
 
-    # train baseline model
-    classifier.baseline_train(X_source, y_source)
+        # train baseline model
+        classifier.baseline_train(X_source, y_source)
 
-    baseline_pred = classifier.baseline_model.predict(X_test)
-    baseline_accuracy = accuracy_score(y_test, baseline_pred)
-    print(f"Baseline model's accuracy: {baseline_accuracy * 100}%")
+        baseline_pred = classifier.baseline_model.predict(X_test)
+        baseline_accuracy = accuracy_score(y_test, baseline_pred)
+        #print(f"Baseline model's accuracy: {baseline_accuracy * 100}%")
 
-    # train self-training model
-    classifier.self_train(X_source, y_source, X_unlabeled)
+        # train self-training model
+        classifier.self_train(X_source, y_source, X_unlabeled)
 
-    pred = classifier.model.predict(X_test)
-    accuracy = accuracy_score(y_test, pred)
+        pred = classifier.model.predict(X_test)
+        accuracy = accuracy_score(y_test, pred)
 
-    print(f"Self-Training model's accuracy: {accuracy * 100}%")
+        #print(f"Self-Training model's accuracy: {accuracy * 100}%")
+        accuracies.append((baseline_accuracy, accuracy))
+    plot_accuracies(accuracies)
+
+    
+
 
 
 if __name__ == "__main__":
