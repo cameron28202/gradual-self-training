@@ -20,6 +20,7 @@ class PortraitsClassifier():
         self.n_components = n_components
         self.pca = PCA(n_components=n_components)
         base_cart = DecisionTreeClassifier(max_depth=5)
+        self.baseline_model = CalibratedClassifierCV(base_cart, method='sigmoid', cv=5)
         self.model = CalibratedClassifierCV(base_cart, method='sigmoid', cv=5)
         self.scaler = StandardScaler()
 
@@ -29,7 +30,7 @@ class PortraitsClassifier():
             img = img.resize(self.image_size)
             return np.array(img).flatten()
     
-    def prepare_image(self, images_per_year = 15):
+    def prepare_image(self, images_per_year = 20):
         X, y, years = [], [], []
         year_counter = defaultdict(int)
         for gender in ['F', 'M']:
@@ -75,19 +76,25 @@ class PortraitsClassifier():
             X, y, years, test_size=test_size, random_state=random_state, stratify=y
         )
 
-        unlabeled_ratio = unlabeled_size / (1 - test_size)
+        labeled_size = 1 - (test_size + unlabeled_size)
+        labeled_ratio = labeled_size / (1 - test_size)
         
         # by default, we are taking the rest of the 80% daya and splitting it
         # into 20% source (labeled) and 60% unlabeled.
         # X_source, y_source and years_source are now labeled datasets
         # X_unlabeled, y_unlabeled and years_unlabeled are now unlabeled datasets
-        X_source, X_unlabeled, y_source, y_unlabeled, years_source, years_unlabeled = train_test_split(
-            X_temp, y_temp, years_temp, test_size=unlabeled_ratio, random_state=random_state, stratify=y_temp
+        X_labeled, X_unlabeled, y_labeled, y_unlabeled, years_labeled, years_unlabeled = train_test_split(
+            X_temp, y_temp, years_temp, test_size=1-labeled_ratio, random_state=random_state, stratify=y_temp
         )
 
-        return (X_source, y_source, years_source), (X_unlabeled, y_unlabeled, years_unlabeled), (X_test, y_test, years_test)
+        return (X_labeled, y_labeled, years_labeled), (X_unlabeled, y_unlabeled, years_unlabeled), (X_test, y_test, years_test)
 
-    def self_train(self, source_data, unlabeled_data, n_iterations = 10, threshhold = .6):
+    def baseline_train(self, source_data):
+        X_train = source_data[0]
+        y_train = source_data[1]
+        self.baseline_model.fit(X_train, y_train)
+
+    def self_train(self, source_data, unlabeled_data, n_iterations = 10, threshhold = .8):
 
         '''
             Expected paramaters:
@@ -153,11 +160,32 @@ def main():
     X, y, years = classifier.prepare_image()
     source_data, unlabeled_data, test_data = classifier.split_data(X, y, years)
 
+    # unpack test data
+    X_test = test_data[0]
+    y_test = test_data[1]
+    year_test = test_data[2]
+
+    # train baseline model, analyze accuracy
+    classifier.baseline_train(source_data)
+
+    baseline_pred = classifier.baseline_model.predict(X_test)
+    accuracy = accuracy_score(y_test, baseline_pred)
+    print(f"Baseline Model's accuracy: {accuracy * 100}%.")
+
+    # train self-trained model, analyze accuracy
     X_train, y_train, years_train = classifier.self_train(source_data, unlabeled_data)
 
-    pred = classifier.model.predict(test_data[0])
-    accuracy = accuracy_score(test_data[1], pred)
-    print(f"Model's accuracy: {accuracy * 100}%.")
+    pred = classifier.model.predict(X_test)
+    accuracy = accuracy_score(y_test, pred)
+    print(f"Self-Trained Model's accuracy: {accuracy * 100}%.")
+
+    # pred = classifier.model.predict(X_test[:20])
+    # for x in range(20):
+    #     print(f"Predicted that image {x+1} was {pred[x]}.")
+    #     print("Correct" if pred[x] == y_test[x] else "Incorrect")
+        
+
+    
 
 if __name__ == "__main__":
     main()

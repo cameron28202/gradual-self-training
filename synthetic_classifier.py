@@ -8,11 +8,11 @@ from sklearn.calibration import CalibratedClassifierCV
 class SyntheticClassifier:
     def __init__(self):
         base_cart = DecisionTreeClassifier(max_depth=5)
+        self.baseline_model = CalibratedClassifierCV(base_cart, method='sigmoid', cv=5)
         self.model = CalibratedClassifierCV(base_cart, method='sigmoid', cv=5)
-        #self.model = DecisionTreeClassifier()
         self.scaler = StandardScaler()
 
-    def generate_synthetic_data(self, n_samples=5000):
+    def generate_synthetic_data(self, n_samples=100000):
 
         # binary classification
         n_features = 2
@@ -38,7 +38,7 @@ class SyntheticClassifier:
 
         # split into labeled, unlabeled and test sets
         # y unlabeled not used 
-        X_source, X_temp, y_source, y_temp = train_test_split(X, y, test_size=.8, random_state=42)
+        X_source, X_temp, y_source, y_temp = train_test_split(X, y, test_size=.2, random_state=42)
         X_unlabeled, X_test, y_unlabeled, y_test = train_test_split(X_temp, y_temp, test_size=.5, random_state=42)
 
         # transform data
@@ -49,8 +49,12 @@ class SyntheticClassifier:
         return X_source, y_source, X_unlabeled, y_unlabeled, X_test, y_test
 
 
-    def self_train(self, X_labeled, y_labeled, X_unlabeled, n_iterations=10, threshhold=.7):
+    def baseline_train(self, X_train, Y_train):
+        self.baseline_model.fit(X_train, Y_train)
 
+    def self_train(self, X_labeled, y_labeled, X_unlabeled, n_iterations=10, initial_threshold=.8):
+
+        threshold = initial_threshold
         # copy initial labeled dataset then the remaining instances
         X_train = X_labeled.copy()
         y_train = y_labeled.copy()
@@ -72,7 +76,7 @@ class SyntheticClassifier:
             probas = self.model.predict_proba(X_remaining)
             
             max_probas = np.max(probas, axis=1)
-            confident_idx = max_probas > threshhold
+            confident_idx = max_probas > threshold
 
             if not np.any(confident_idx):
                 print(f"No confident predictions in iteration {iteration + 1}. Stopping.")
@@ -92,20 +96,29 @@ class SyntheticClassifier:
             X_remaining = X_remaining[~confident_idx]
 
             labeled_counts.append(len(X_train))
-        
-        return X_train, y_train, labeled_counts
+            threshold = min(threshold + 0.02, 0.95)
 
 
     
 def main():
     classifier = SyntheticClassifier()
-    X_source, y_source, X_unlabeled, y_unlabeled, X_test, y_test = classifier.load_and_prepare_data()
-    X_train, Y_train, labeled_counts = classifier.self_train(X_source, y_source, X_unlabeled)
+
+    X_source, y_source, X_unlabeled, _, X_test, y_test = classifier.load_and_prepare_data()
+
+    # train baseline model
+    classifier.baseline_train(X_source, y_source)
+
+    baseline_pred = classifier.baseline_model.predict(X_test)
+    baseline_accuracy = accuracy_score(y_test, baseline_pred)
+    print(f"Baseline model's accuracy: {baseline_accuracy * 100}%")
+
+    # train self-training model
+    classifier.self_train(X_source, y_source, X_unlabeled)
 
     pred = classifier.model.predict(X_test)
     accuracy = accuracy_score(y_test, pred)
 
-    print(f"Model's accuracy: {accuracy * 100}%")
+    print(f"Self-Training model's accuracy: {accuracy * 100}%")
 
 
 if __name__ == "__main__":
