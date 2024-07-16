@@ -1,10 +1,8 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
-from sklearn.calibration import CalibratedClassifierCV
+from sklearn.metrics import log_loss
+
 
 class DecisionTreeNode:
     def __init__(self, depth=0):
@@ -19,10 +17,12 @@ class DecisionTree:
     def __init__(self, max_depth=5, min_samples_split=2):
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
-        self.root = DecisionTreeNode()
+        self.root = None
     
     def fit(self, X, y_prob):
-        pass
+        self.num_features = X.shape[1]
+        self.num_classes = y_prob.shape[1]
+        self.root = self.grow_tree(X, y_prob)
 
     def grow_tree(self, X, y_prob, depth=0):
         num_samples, num_features = X.shape
@@ -74,7 +74,7 @@ class DecisionTree:
                 node.class_probas = np.sum(y_prob, axis=0) / num_samples
             return node
 
-    def gini_impurity(y_prob):
+    def gini_impurity(self, y_prob):
         class_probs = np.sum(y_prob, axis=0) / len(y_prob)
         return 1 - np.sum(class_probs ** 2)
 
@@ -105,7 +105,7 @@ class DecisionTree:
         return impurity_before - weighted_impurity_after
 
     def predict_proba(self, X):
-        return np.array([self._predict_single(x) for x in X])
+        return np.array([self.predict_single(x) for x in X])
     
     def predict_single(self, x):
         node = self.root
@@ -120,8 +120,9 @@ class DecisionTree:
 class SyntheticClassifier:
     def __init__(self):
         self.model = DecisionTree()
+        self.scaler = StandardScaler()
 
-    def generate_synthetic_data(self, n_samples=100000):
+    def generate_synthetic_data(self, n_samples=1000):
 
         # binary classification
         n_features = 2
@@ -151,23 +152,26 @@ class SyntheticClassifier:
 
         # split into labeled, unlabeled and test sets
         # y unlabeled not used 
-        X_source, X_temp, y_source, y_temp = train_test_split(X, y, test_size=.2, random_state=42)
-        X_unlabeled, X_test, y_unlabeled, y_test = train_test_split(X_temp, y_temp, test_size=.5, random_state=42)
+        X_source, X_temp, y_prob_source, y_prob_temp = train_test_split(X, y, test_size=.2, random_state=42)
+        X_unlabeled, X_test, y_prob_unlabeled, y_prob_test = train_test_split(X_temp, y_prob_temp, test_size=.5, random_state=42)
 
         # transform data
         X_source = self.scaler.fit_transform(X_source)
         X_unlabeled = self.scaler.transform(X_unlabeled)
         X_test = self.scaler.transform(X_test)
 
-        return X_source, y_source, X_unlabeled, y_unlabeled, X_test, y_test
+        return X_source, y_prob_source, X_unlabeled, y_prob_unlabeled, X_test, y_prob_test
     
 def main():
     classifier = SyntheticClassifier()
 
-    X_source, y_source, X_unlabeled, _, X_test, y_test = classifier.load_and_prepare_data()
-    
+    X_source, y_prob_source, X_unlabeled, _, X_test, y_prob_test = classifier.load_and_prepare_data()
 
-    
+    node = classifier.model.fit(X_source, y_prob_source)
+
+    print(classifier.model.predict_proba(X_test[:5]))
+    print(y_prob_test[:5])
+
 
 
 
