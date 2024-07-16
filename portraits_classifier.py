@@ -13,6 +13,9 @@ from PIL import Image
 from sklearn.decomposition import PCA
 import re
 
+class DecisionTree():
+    pass
+
 class PortraitsClassifier():
     def __init__(self, data_dir, image_size=(64, 64), n_components=100):
         self.data_dir = data_dir
@@ -94,14 +97,15 @@ class PortraitsClassifier():
         y_train = source_data[1]
         self.baseline_model.fit(X_train, y_train)
 
-    def self_train(self, source_data, unlabeled_data, n_iterations = 10, threshhold = .8):
+    def self_train(self, source_data, unlabeled_data, n_iterations = 10, initial_threshold = .7):
+
 
         '''
             Expected paramaters:
             source_data: (X_source, y_source, years_source)
             unlabeled_data: (X_unlabeled, y_unlabeled, years_unlabeled)
         '''
-
+        threshold = initial_threshold
         X_train = source_data[0]
         y_train = source_data[1]
         years_train = source_data[2]
@@ -127,7 +131,7 @@ class PortraitsClassifier():
             max_probas = np.max(probas, axis=1)
 
             # store the indices with confident predictions
-            confident_idx = max_probas > threshhold
+            confident_idx = max_probas > threshold
 
             num_confident = np.sum(confident_idx)
 
@@ -152,8 +156,8 @@ class PortraitsClassifier():
             # keep the instances we aren't yet sure about in the unlabeled dataset
             X_unlabeled = X_unlabeled[~confident_idx]
             years_unlabeled = years_unlabeled[~confident_idx]
+            threshhold = min(threshhold + .05, .95)
 
-        return X_train, y_train, years_train
 
 def main():
     classifier = PortraitsClassifier("data\classes")
@@ -173,7 +177,7 @@ def main():
     print(f"Baseline Model's accuracy: {accuracy * 100}%.")
 
     # train self-trained model, analyze accuracy
-    X_train, y_train, years_train = classifier.self_train(source_data, unlabeled_data)
+    classifier.self_train(source_data, unlabeled_data)
 
     pred = classifier.model.predict(X_test)
     accuracy = accuracy_score(y_test, pred)
