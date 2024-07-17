@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import log_loss
@@ -71,12 +72,11 @@ class DecisionTree:
                 node.right = self.grow_tree(X[~left_mask], y_prob[~left_mask], depth + 1)
 
             else:
-                node.class_probas = np.sum(y_prob, axis=0) / num_samples
+                node.class_probas = np.mean(y_prob, axis=0)
             return node
 
     def gini_impurity(self, y_prob):
-        class_probs = np.sum(y_prob, axis=0) / len(y_prob)
-        return 1 - np.sum(class_probs ** 2)
+        return 1 - np.sum(np.mean(y_prob, axis=0) ** 2)
 
 
     def calculate_gain(self, y_prob, left_mask):
@@ -107,6 +107,10 @@ class DecisionTree:
     def predict_proba(self, X):
         return np.array([self.predict_single(x) for x in X])
     
+    def predict(self, X):
+        probas = self.predict_proba(X)
+        return np.argmax(probas, axis=1)
+    
     def predict_single(self, x):
         node = self.root
         while node.left:
@@ -135,46 +139,56 @@ class SyntheticClassifier:
         # stack into single 2d array, add noise
         X = np.vstack((class_0, class_1))
         X += np.random.randn(n_samples, n_features) * .5
+
+        # actual labels
+        y = np.hstack([np.zeros(n_samples // 2), np.ones(n_samples // 2)])
         
         # shuffle
         random_indices = np.random.permutation(n_samples)
         X = X[random_indices]
+        y = y[random_indices]
         
         # generate probabilistic labels
         distances = np.sqrt(np.sum(X**2, axis=1))
         proba_class_1 = 1 / (1 + np.exp(-distances))
         y_prob = np.column_stack((1-proba_class_1, proba_class_1))
 
-        return X, y_prob
+        return X, y_prob, y
     
     def load_and_prepare_data(self):
-        X, y = self.generate_synthetic_data()
+        X, y_prob, y = self.generate_synthetic_data()
 
         # split into labeled, unlabeled and test sets
         # y unlabeled not used 
-        X_source, X_temp, y_prob_source, y_prob_temp = train_test_split(X, y, test_size=.2, random_state=42)
-        X_unlabeled, X_test, y_prob_unlabeled, y_prob_test = train_test_split(X_temp, y_prob_temp, test_size=.5, random_state=42)
-
+        X_source, X_temp, y_prob_source, y_prob_temp, y_source, y_temp = train_test_split(X, y_prob, y, test_size=0.2, random_state=42)
+        X_unlabeled, X_test, y_prob_unlabeled, y_prob_test, y_unlabeled, y_test = train_test_split(X_temp, y_prob_temp, y_temp, test_size=0.5, random_state=42)
         # transform data
         X_source = self.scaler.fit_transform(X_source)
         X_unlabeled = self.scaler.transform(X_unlabeled)
         X_test = self.scaler.transform(X_test)
 
-        return X_source, y_prob_source, X_unlabeled, y_prob_unlabeled, X_test, y_prob_test
+        return X_source, y_prob_source, X_unlabeled, y_prob_unlabeled, X_test, y_prob_test, y_test
     
 def main():
     classifier = SyntheticClassifier()
+    X_source, y_prob_source, X_unlabeled, _, X_test, y_prob_test, y_test = classifier.load_and_prepare_data()
 
-    X_source, y_prob_source, X_unlabeled, _, X_test, y_prob_test = classifier.load_and_prepare_data()
+    classifier.model.fit(X_source, y_prob_source)
 
-    node = classifier.model.fit(X_source, y_prob_source)
+    y_pred = classifier.model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f"Model accuracy: {accuracy * 100:.2f}%")
 
-    print(classifier.model.predict_proba(X_test[:5]))
-    print(y_prob_test[:5])
+    # Print some predictions
+    print("\nSample predictions:")
+    for i in range(10):
+        proba = classifier.model.predict_proba(X_test[i:i+1])[0]
+        pred_class = np.argmax(proba)
+        true_class = y_test[i]
+        print(f"Sample {i+1}: Predicted class: {pred_class}, True class: {true_class}, Probabilities: {proba}")
 
 
 
 
 if __name__ == "__main__":
     main()
-    
