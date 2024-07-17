@@ -57,6 +57,7 @@ class DecisionTree:
 
                 # we then calculate the gain, passing in the y_prob and left_mask.
                 gain = self.calculate_gain(y_prob, left_mask)
+
                 if gain > best_gain:
                     best_gain = gain
                     best_feature = feature
@@ -66,6 +67,7 @@ class DecisionTree:
                 node.feature = best_feature
                 node.threshold = best_threshold
                 
+
                 left_mask = X[:, best_feature] <= best_threshold
                 
                 node.left = self.grow_tree(X[left_mask], y_prob[left_mask], depth + 1)
@@ -123,36 +125,40 @@ class DecisionTree:
 
 class SyntheticClassifier:
     def __init__(self):
-        self.model = DecisionTree()
+        self.model = DecisionTree(max_depth=5, min_samples_split=2)
         self.scaler = StandardScaler()
 
-    def generate_synthetic_data(self, n_samples=1000):
+    def generate_synthetic_data(self, n_samples=10000):
 
         # binary classification
         n_features = 2
 
         # class 0 centered around -1, -1
-        class_0 = np.random.randn(n_samples // 2, n_features) + [-1, -1]
+        class_0 = np.random.randn(n_samples // 2, n_features) + [-2, -2]
         # class 1 centered around 1, 1
-        class_1 = np.random.randn(n_samples // 2, n_features) + [1, 1]
+        class_1 = np.random.randn(n_samples // 2, n_features) + [2, 2]
         
-        # stack into single 2d array, add noise
+        # stack into single 2d array
         X = np.vstack((class_0, class_1))
-        X += np.random.randn(n_samples, n_features) * .5
 
-        # actual labels
+        #actual labels
         y = np.hstack([np.zeros(n_samples // 2), np.ones(n_samples // 2)])
+
+        X += np.random.randn(n_samples, n_features) * .5
         
         # shuffle
         random_indices = np.random.permutation(n_samples)
         X = X[random_indices]
         y = y[random_indices]
         
-        # generate probabilistic labels
-        distances = np.sqrt(np.sum(X**2, axis=1))
-        proba_class_1 = 1 / (1 + np.exp(-distances))
-        y_prob = np.column_stack((1-proba_class_1, proba_class_1))
-
+        class_0_center = np.array([-2, -2])
+        class_1_center = np.array([2, 2])
+        
+        distances_0 = np.linalg.norm(X - class_0_center, axis=1)
+        distances_1 = np.linalg.norm(X - class_1_center, axis=1)
+        
+        proba_class_1 = distances_0 / (distances_0 + distances_1)
+        y_prob = np.column_stack((1 - proba_class_1, proba_class_1))
         return X, y_prob, y
     
     def load_and_prepare_data(self):
