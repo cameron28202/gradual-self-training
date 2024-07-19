@@ -125,18 +125,18 @@ class DecisionTree:
 
 class SyntheticClassifier:
     def __init__(self):
-        self.model = DecisionTree(max_depth=5, min_samples_split=2)
+        self.model = None
         self.scaler = StandardScaler()
 
-    def generate_synthetic_data(self, n_samples=10000):
+    def generate_synthetic_data(self, n_samples=50000):
 
         # binary classification
         n_features = 2
 
         # class 0 centered around -1, -1
-        class_0 = np.random.randn(n_samples // 2, n_features) + [-2, -2]
+        class_0 = np.random.randn(n_samples // 2, n_features) + [-1, -1]
         # class 1 centered around 1, 1
-        class_1 = np.random.randn(n_samples // 2, n_features) + [2, 2]
+        class_1 = np.random.randn(n_samples // 2, n_features) + [1, 1]
         
         # stack into single 2d array
         X = np.vstack((class_0, class_1))
@@ -151,8 +151,8 @@ class SyntheticClassifier:
         X = X[random_indices]
         y = y[random_indices]
         
-        class_0_center = np.array([-2, -2])
-        class_1_center = np.array([2, 2])
+        class_0_center = np.array([-1, -1])
+        class_1_center = np.array([1, 1])
         
         distances_0 = np.linalg.norm(X - class_0_center, axis=1)
         distances_1 = np.linalg.norm(X - class_1_center, axis=1)
@@ -175,23 +175,74 @@ class SyntheticClassifier:
 
         return X_source, y_prob_source, X_unlabeled, y_prob_unlabeled, X_test, y_prob_test, y_test
     
+    def gradual_self_train(self, X_source, y_prob_source, X_unlabeled, num_iterations=10, initial_threshold = .7):
+        threshold = initial_threshold
+
+        X_train = X_source.copy()
+        y_prob_train = y_prob_source.copy()
+        X_remaining = X_unlabeled.copy()
+
+        self.model = DecisionTree(max_depth=5, min_samples_split=2)
+
+        for iteration in range(num_iterations):
+            if len(X_remaining) == 0:
+                print(f"Done with self-training after {iteration + 1} iterations.")
+                break
+
+            # train model on current X_train
+            self.model.fit(X_train, y_prob_train)
+
+            # assign soft labels to unlabeled data
+            probas = self.model.predict_proba(X_remaining)
+            
+            # find confident predictions
+            max_probas = np.max(probas, axis=1)
+            confident_idx = max_probas > threshold
+
+            if not np.any(confident_idx):
+                threshold = max(0.5, threshold - .02)
+                print(f"Skipping iteration {iteration}, adjusting to a threshold of {threshold:.2f}")
+                if threshold <= .6:
+                    print(f"We were unable to give confident predictions on {len(X_remaining)} instances :(")
+                    break
+
+                continue
+
+                
+            
+            print(f"Iteration {iteration} added {np.sum(confident_idx)} predictions.")
+            # add samples to this new set of instances
+            # that are above the confidence threshhold.
+            # ( numpy boolean array indexing )
+            new_X = X_remaining[confident_idx]
+            # assign labels to this new data
+            new_y_prob = probas[confident_idx]
+
+            X_train = np.vstack((X_train, new_X))
+            y_prob_train = np.vstack((y_prob_train, new_y_prob))
+
+            # keep the samples that we are not yet confident about
+            X_remaining = X_remaining[~confident_idx]
+            
+
 def main():
     classifier = SyntheticClassifier()
     X_source, y_prob_source, X_unlabeled, _, X_test, y_prob_test, y_test = classifier.load_and_prepare_data()
 
-    classifier.model.fit(X_source, y_prob_source)
+    # baseline model accuracy:
+    baseline_model = DecisionTree(max_depth=5, min_samples_split=2)
+    baseline_model.fit(X_source, y_prob_source)
+    baseline_pred = baseline_model.predict(X_test)
+    baseline_accuracy = accuracy_score(y_test, baseline_pred)
+    print(f"Baseline model accuracy: {baseline_accuracy * 100}%")
+
+
+
+    classifier.gradual_self_train(X_source, y_prob_source, X_unlabeled)
 
     y_pred = classifier.model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
-    print(f"Model accuracy: {accuracy * 100:.2f}%")
-
-    # Print some predictions
-    print("\nSample predictions:")
-    for i in range(10):
-        proba = classifier.model.predict_proba(X_test[i:i+1])[0]
-        pred_class = np.argmax(proba)
-        true_class = y_test[i]
-        print(f"Sample {i+1}: Predicted class: {pred_class}, True class: {true_class}, Probabilities: {proba}")
+    print(f"Self-Trained model accuracy: {accuracy * 100}%")
 
 
 
