@@ -14,7 +14,7 @@ class ImpreciseClassifier:
         self.model = LogisticRegression(random_state=42, max_iter=1000)
         self.scaler = StandardScaler()
     
-    def create_domains(self, n_domains=5, n_samples=1500):
+    def create_domains(self, n_domains=5, n_samples=2500):
         """
         Create a series of sequential, non-overlapping domains without rotation.
         
@@ -210,14 +210,6 @@ def main():
     domains = classifier.create_domains()
 
     classifier.train_imprecise(domains)
-
-    #unpack target domain
-    X_target = domains[-1][0]
-    y_target = domains[-1][1]
-
-    final_pred = classifier.model.predict(X_target)
-    final_accuracy = accuracy_score(final_pred, y_target)
-    print(f"Final model accuracy: {final_accuracy*100:.2f}%.")
     
 
 if __name__ == "__main__":
