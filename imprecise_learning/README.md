@@ -11,14 +11,16 @@ This project implements an imprecise learning algorithm for binary classificatio
 1. **Data Preparation**:
    - MNIST dataset is loaded and preprocessed.
    - Binary labels are created (0 for even, 1 for odd digits).
-   - Data is split into multiple domains.
+   - A gradual domain shift is implemented by shifting each domain by max_rotation / n_domains degrees.
+   - Source domain is not rotated 
+   - Target domain is fully rotated
 
 2. **Imprecise Data Representation**:
    - Pixel values are represented as ranges rather than precise values.
    - Imprecision is added using a percentage-based approach.
 
 3. **Alternating Optimization**:
-   - The algorithm alternates between updating model parameters and selecting optimal precise instances from imprecise ranges.
+   - The algorithm alternates between updating the model parameters, then selecting optimal precise instances from imprecise ranges.
 
 4. **Logistic Regression Model**:
    - A simple logistic regression model is used as the base classifier.
@@ -92,18 +94,14 @@ Final model accuracy: 90.45%.
 
 ## Future Goals
 
-1. **Gradual Domain Adaptation**:
-   - Implement gradual domain shift by rotating MNIST images.
-   - Test the imprecise learning algorithm's performance on this adapted dataset.
-
-2. **Optimization and Refinement**:
+1. **Optimization and Refinement**:
    - Improve the process of finding optimal precise values within imprecise ranges.
    - Explore methods to consistently improve accuracy across iterations.
 
-3. **Imprecise Labels**:
+2. **Imprecise Labels**:
    - Extend the implementation to include imprecision in labels, not just features.
 
-4. **Performance Analysis**:
+3. **Performance Analysis**:
    - Conduct a more comprehensive analysis of the algorithm's performance under various conditions.
 
 ## Current Challenges
