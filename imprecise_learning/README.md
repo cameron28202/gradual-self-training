@@ -41,55 +41,32 @@ This project implements an imprecise learning algorithm for binary classificatio
 - The model sometimes shows improvement in accuracy after training on imprecise data.
 - However, accuracy often decreases after each iteration of adding imprecision. I want to explore why this is happening, maybe the model is overfitting to the imprecise data, making it less accurate on precise target domain?
 - Convergence is typically achieved within a few iterations for each domain.
-- Performance varies across domains, suggesting potential for further optimization.
 
-### Sample Output for 5 domains, 5000 samples
+### Sample Output for 5 domains, 50 samples
 
 ```
-Initial model accuracy: 86.25%
+Baseline model accuracy: 0.6
 Processing domain 1
-Current loss: 0.06793042622416212
-Iteration 0 accuracy: 0.8585
-Current loss: 0.03445668401801197
-Iteration 1 accuracy: 0.8305
-Current loss: 0.0346398298320042
-Iteration 2 accuracy: 0.8315
-Converged after 4 iterations
+Iteration 0 accuracy: 0.7000
+Iteration 1 accuracy: 0.8000
+Iteration 2 accuracy: 0.8000
+Converged after 3 iterations
 Finished processing domain 1
-Final accuracy for domain 1: 0.8315
+Final accuracy for domain 1: 0.8000
 -----------------------------
 Processing domain 2
-Current loss: 0.05505136333348069
-Iteration 0 accuracy: 0.8655
-Current loss: 0.029618274337404108
-Iteration 1 accuracy: 0.8450
-Current loss: 0.029259480523583264
-Iteration 2 accuracy: 0.8440
-Converged after 4 iterations
+Iteration 0 accuracy: 0.7000
+Iteration 1 accuracy: 0.7000
+Converged after 2 iterations
 Finished processing domain 2
-Final accuracy for domain 2: 0.8440
+Final accuracy for domain 2: 0.7000
 -----------------------------
 Processing domain 3
-Current loss: 0.0553793459592318
-Iteration 0 accuracy: 0.8445
-Current loss: 0.029782983844801558
-Iteration 1 accuracy: 0.8170
-Converged after 3 iterations
+Iteration 0 accuracy: 0.9000
+Iteration 1 accuracy: 0.9000
+Converged after 2 iterations
 Finished processing domain 3
-Final accuracy for domain 3: 0.8170
------------------------------
-Processing domain 4
-Current loss: 0.06359807445840113
-Iteration 0 accuracy: 0.9280
-Current loss: 0.0325157443099753
-Iteration 1 accuracy: 0.9020
-Current loss: 0.03207662462516234
-Iteration 2 accuracy: 0.9045
-Converged after 4 iterations
-Finished processing domain 4
-Final accuracy for domain 4: 0.9045
------------------------------
-Final model accuracy: 90.45%.
+Final accuracy for domain 3: 0.9000
 ```
 
 ## Future Goals
