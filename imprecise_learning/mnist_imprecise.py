@@ -62,7 +62,7 @@ class ImpreciseClassifier:
 
         return domains
     
-    def train_imprecise(self, domains, imprecision_percent=5, max_iterations=10, convergence_threshold=1e-4):
+    def train_imprecise(self, domains, imprecision_percent=2, max_iterations=10, convergence_threshold=1e-4):
         # Train on source domain
         X_source, y_source = domains[0]
         self.model.fit(X_source, y_source)
@@ -89,6 +89,7 @@ class ImpreciseClassifier:
             # Select random precise pixel values from the imprecise range
             X_precise = np.array([[np.random.uniform(pixel[0], pixel[1]) for pixel in instance] for instance in X_imprecise])
             
+            prev_accuracy = 0
             for iteration in range(max_iterations):
                 # Train model on current precise values and pseudo-labels
                 self.model.fit(X_precise, pseudo_labels)
@@ -107,11 +108,17 @@ class ImpreciseClassifier:
 
                         # Update pseudo-label based on the new instance
                         pseudo_labels[i] = np.argmax(self.model.predict_proba(X_precise[i].reshape(1, -1))[0])
-                
+            
                 # Evaluate on target domain (in practice, you might do this less frequently)
                 current_pred = self.model.predict(X_target)
                 current_accuracy = accuracy_score(current_pred, y_target)
                 print(f"Iteration {iteration} accuracy: {current_accuracy:.4f}")
+
+                if abs(current_accuracy - prev_accuracy) < convergence_threshold:
+                    print(f"Converged after {iteration + 1} iterations")
+                    break
+
+                prev_accuracy = current_accuracy
 
             print(f"Finished processing domain {domain_index}")
             print(f"Final accuracy for domain {domain_index}: {current_accuracy:.4f}")
