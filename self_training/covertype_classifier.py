@@ -1,15 +1,33 @@
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
 from sklearn.datasets import fetch_covtype
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
 
+
+class SimpleNeuralNet(nn.Module):
+    def __init__(self, input_size):
+        super().__init__()
+        self.layer = nn.Linear(input_size, 1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        x = self.layer(x)
+        x = self.sigmoid(x)
+        return x
+
 class CoverTypeClassifier:
-    def __init__(self):
-        self.model = LogisticRegression(random_state=42, max_iter=1000)
-        self.scaler = StandardScaler()
         
+    def __init__(self, input_size):
+        self.model = SimpleNeuralNet(input_size)
+        self.scaler = StandardScaler()
+        self.criterion = nn.BCELoss()
+        self.optimizer = optim.Adam(self.model.parameters(), lr = .001)
+    
     def load_and_prepare_data(self):
 
         # fetch dataset (x is feature data, y is labels)
@@ -56,8 +74,7 @@ class CoverTypeClassifier:
         return X_source_scaled, X_intermediate_scaled, X_target_scaled, y_source, y_intermediate, y_target
 
 
-    def gradual_self_train(self, X_source_scaled, y_source, X_intermediate_scaled, y_intermediate, X_target_scaled, y_target, batch_size= 1000, confidence_threshold=0.8):
-        # train on initial labeled dataset
+    def gradual_self_train(self, X_source_scaled, y_source, X_intermediate_scaled, y_intermediate, X_target_scaled, y_target, batch_size=5000, initial_confidence_threshold=0.6):
         self.train(X_source_scaled, y_source)
 
         X_train = X_source_scaled
@@ -69,25 +86,20 @@ class CoverTypeClassifier:
             start = i * batch_size
             end = (i + 1) * batch_size
 
-            # create x and y batch
             X_batch = X_intermediate_scaled[start:end]
             y_batch = y_intermediate[start:end]
 
-            # give psuedo labels to unlabeled dataset
             proba = self.predict_proba(X_batch)
-
             max_proba = np.max(proba, axis=1)
 
-            # add labels that are above passsed in confidence threshold (default .8)
+            confidence_threshold = initial_confidence_threshold + (i / num_batches) * (0.9 - initial_confidence_threshold)
             confident_idx = max_proba >= confidence_threshold
 
             X_train = np.vstack((X_train, X_batch[confident_idx]))
             y_train = np.concatenate((y_train, self.predict(X_batch[confident_idx])))
 
-            # train on new psuedo labeled data
             self.train(X_train, y_train)
 
-            # evaluate performance
             source_acc = self.evaluate(X_source_scaled, y_source)
             target_acc = self.evaluate(X_target_scaled, y_target)
             batch_acc = self.evaluate(X_batch, y_batch)
@@ -97,6 +109,7 @@ class CoverTypeClassifier:
             print(f"  Target accuracy: {target_acc:.4f}")
             print(f"  Batch accuracy: {batch_acc:.4f}")
             print(f"  Training set size: {len(y_train)}")
+            print(f"  Confidence threshold: {confidence_threshold:.2f}")
             print()
         
         return self.evaluate(X_target_scaled, y_target)
@@ -109,14 +122,52 @@ class CoverTypeClassifier:
 
 
     def predict_proba(self, X):
-        return self.model.predict_proba(X)
+            self.model.eval()
+            with torch.no_grad():
+                X_tensor = torch.FloatTensor(X)
+                outputs = self.model(X_tensor)
+                probabilities = outputs.numpy()
+            return np.column_stack((1 - probabilities, probabilities))
 
-    def train(self, X_train, y_train):
-        self.model.fit(X_train, y_train)
+    def train(self, X_train, y_train, epochs=10, batch_size=32):
+        X_train_tensor = torch.FloatTensor(X_train)
+        y_train_tensor = torch.FloatTensor(y_train).unsqueeze(1)
+        
+        dataset = torch.utils.data.TensorDataset(X_train_tensor, y_train_tensor)
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        
+        self.model.train()
+        for epoch in range(epochs):
+            for batch_X, batch_y in dataloader:
+                self.optimizer.zero_grad()
+                outputs = self.model(batch_X)
+                loss = self.criterion(outputs, batch_y)
+                loss.backward()
+                self.optimizer.step()
     
     def predict(self, X):
-        return self.model.predict(X)
+        self.model.eval()
+        with torch.no_grad():
+            X_tensor = torch.FloatTensor(X)
+            outputs = self.model(X_tensor)
+            predictions = (outputs >= 0.5).float().numpy()
+        return predictions.squeeze()
     
     def evaluate(self, X, y_true):
         y_pred = self.predict(X)
-        return accuracy_score(y_true, y_pred)
+        return np.mean(y_pred == y_true)
+    
+def main():
+    classifier = CoverTypeClassifier(54)
+    X_source_scaled, X_intermediate_scaled, X_target_scaled, y_source, y_intermediate, y_target = classifier.load_and_prepare_data()
+
+    print("Training baseline model...")
+    baseline_accuracy = classifier.baseline_train(X_source_scaled, y_source, X_target_scaled, y_target)
+    print(f"Baseline target accuracy: {baseline_accuracy:.4f}")
+    
+    print("\nTraining with gradual self-training...")
+    final_accuracy = classifier.gradual_self_train(X_source_scaled, y_source, X_intermediate_scaled, y_intermediate, X_target_scaled, y_target)
+    print(f"Final target accuracy after gradual self-training: {final_accuracy:.4f}")
+
+if __name__ == "__main__":
+    main()
