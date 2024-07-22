@@ -38,9 +38,8 @@ This project implements an imprecise learning algorithm for binary classificatio
 
 ## Preliminary Findings
 
-- The model sometimes shows improvement in accuracy after training on imprecise data.
+- The model always shows improvement in accuracy after training on imprecise data.
 - However, accuracy often decreases after each iteration of adding imprecision. I want to explore why this is happening, maybe the model is overfitting to the imprecise data, making it less accurate on precise target domain?
-- Convergence is typically achieved within a few iterations for each domain.
 
 ### Sample Output for 7 domains, 10000 samples, max rotation of 15 degrees
 
