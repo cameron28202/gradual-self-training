@@ -42,31 +42,51 @@ This project implements an imprecise learning algorithm for binary classificatio
 - However, accuracy often decreases after each iteration of adding imprecision. I want to explore why this is happening, maybe the model is overfitting to the imprecise data, making it less accurate on precise target domain?
 - Convergence is typically achieved within a few iterations for each domain.
 
-### Sample Output for 5 domains, 50 samples
+### Sample Output for 7 domains, 10000 samples, max rotation of 15 degrees
 
 ```
-Baseline model accuracy: 0.6
+Baseline model accuracy: 0.8207
 Processing domain 1
-Iteration 0 accuracy: 0.7000
-Iteration 1 accuracy: 0.8000
-Iteration 2 accuracy: 0.8000
-Converged after 3 iterations
+Iteration 0 accuracy: 0.8270
+Iteration 1 accuracy: 0.8245
+Iteration 2 accuracy: 0.8273
+Iteration 3 accuracy: 0.8273
+Converged after 4 iterations
 Finished processing domain 1
-Final accuracy for domain 1: 0.8000
+Final accuracy for domain 1: 0.8273
 -----------------------------
 Processing domain 2
-Iteration 0 accuracy: 0.7000
-Iteration 1 accuracy: 0.7000
-Converged after 2 iterations
+Iteration 0 accuracy: 0.8307
+Iteration 1 accuracy: 0.8317
+Iteration 2 accuracy: 0.8347
+Iteration 3 accuracy: 0.8333
+Iteration 4 accuracy: 0.8310
+Iteration 5 accuracy: 0.8325
+Iteration 6 accuracy: 0.8323
+Iteration 7 accuracy: 0.8347
+Iteration 8 accuracy: 0.8337
+Iteration 9 accuracy: 0.8340
 Finished processing domain 2
-Final accuracy for domain 2: 0.7000
+Final accuracy for domain 2: 0.8340
 -----------------------------
-Processing domain 3
-Iteration 0 accuracy: 0.9000
-Iteration 1 accuracy: 0.9000
-Converged after 2 iterations
-Finished processing domain 3
-Final accuracy for domain 3: 0.9000
+...
+-----------------------------
+Processing domain 5
+Iteration 0 accuracy: 0.8390
+Iteration 1 accuracy: 0.8360
+Iteration 2 accuracy: 0.8370
+Iteration 3 accuracy: 0.8365
+Iteration 4 accuracy: 0.8370
+Iteration 5 accuracy: 0.8395
+Iteration 6 accuracy: 0.8373
+Iteration 7 accuracy: 0.8403
+Iteration 8 accuracy: 0.8385
+Iteration 9 accuracy: 0.8367
+Finished processing domain 5
+Final accuracy for domain 5: 0.8367
+-----------------------------
+Final model accuracy: 0.8367
+Improvement: 0.0160
 ```
 
 ## Future Goals
@@ -80,8 +100,3 @@ Final accuracy for domain 3: 0.9000
 
 3. **Performance Analysis**:
    - Conduct a more comprehensive analysis of the algorithm's performance under various conditions.
-
-## Current Challenges
-
-- High computational cost of finding optimal precise values within imprecise ranges.
-- Inconsistent improvement in accuracy across iterations and domains.
